@@ -1,0 +1,11 @@
+//
+//  Staging.xcconfig
+//  Movies
+//
+//  Created by Mostafa on 18/02/2025.
+//
+
+BACKEND_URL = https:\/\/api.themoviedb.org/3/
+IC_BUNDLE_ICON = AppIcon-staging
+MOVIES_DB_APP_ID = 893864d0247f4b067086f4ea1c0b5289
+IC_CORE_ID = com.mostafa.Building-Designs.CoreKit

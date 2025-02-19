@@ -8,4 +8,5 @@
 BACKEND_URL = https:\/\/api.themoviedb.org/3/
 IC_BUNDLE_ICON = AppIcon-Dev
 MOVIES_DB_APP_ID = 893864d0247f4b067086f4ea1c0b5289
-IC_CORE_ID = com.mostafa.Building-Designs.CoreKit
+IC_CORE_ID = com.mostafa.Building-Designs-Dev.CoreKit
+IC_UIKIT_ID = com.mostafa.Building-Designs-Dev.AppUIKit

@@ -1,9 +1,16 @@
+//
+//  PopularMoviesViewController.swift
+//  Movies-Task
+//
+//  Created by Mostafa on 19/02/2025.
+//
+
+
 import UIKit
 import AppUIKit
 import CoreKit
-import RxSwift
-import RxCocoa
-import RxDataSources
+import Combine
+import CombineCocoa
 
 public class PopularMoviesViewController: NiblessViewController {
 
@@ -11,26 +18,18 @@ public class PopularMoviesViewController: NiblessViewController {
     
     private let viewModel: PopularMoviesViewModel
     private let customView: PopularMoviesView
+    // DataSource & DataSourceSnapShot TypeAlies
+    typealias DataSource = UITableViewDiffableDataSource<Int, MovieListPresentable>
+    typealias DataSourceSnapshot = NSDiffableDataSourceSnapshot<Int, MovieListPresentable>
+        
     
-    private lazy var dataSource: RxTableViewSectionedReloadDataSource<SectionModel<Int, MovieListPresentable>> = {
-        let dataSource = RxTableViewSectionedReloadDataSource<SectionModel<Int, MovieListPresentable>>(
-            configureCell: { (_, tableView, indexPath, element) in
-                guard let cell = tableView.dequeueReusableCell(withIdentifier: R.reuseIdentifier.movieCell, for: indexPath) else {
-                    return UITableViewCell()
-                }
-                
-                cell.configure(with: element)
-                return cell
-            },
-            titleForHeaderInSection: { dataSource, sectionIndex in
-                return "\(dataSource[sectionIndex].model)"
-            }
-        )
-        return dataSource
-    }()
+    // DataSource & DataSourceSnapShot
+    private lazy var datasource = makeDataSource()
+    private var datasourceSnapShot = DataSourceSnapshot()
+
     
     // State
-    private let disposeBag = DisposeBag()
+    private var cancellables: Set<AnyCancellable> = []
 
     // MARK: - Methods
     init(view: PopularMoviesView, viewModel: PopularMoviesViewModel) {
@@ -46,11 +45,8 @@ public class PopularMoviesViewController: NiblessViewController {
     override public func viewDidLoad() {
         super.viewDidLoad()
         observeErrorMessages()
-        subscribe(to: viewModel.list)
-        customView.tableView.rx.itemSelected
-            .compactMap { (self.customView.tableView.cellForRow(at: $0) as? MovieCell)?.movieId }
-            .bind(to: viewModel.selectItemSubject)
-            .disposed(by: disposeBag)
+        bindViewModel()
+        customView.tableView.didSelectRowPublisher.receive(subscriber: viewModel.selectedItemSubscriber)
     }
     
     override public func viewDidAppear(_ animated: Bool) {
@@ -58,24 +54,51 @@ public class PopularMoviesViewController: NiblessViewController {
         
     }
     
-    private func subscribe(to observable: Observable<[Int: [MovieListPresentable]]>) {
-        observable
-            .compactMap { $0.map { SectionModel(model: $0.key, items: $0.value) } }
-            .compactMap { $0.sorted(by: { $0.model > $1.model })}
-            .bind(to: customView.tableView.rx.items(dataSource: self.dataSource))
-            .disposed(by: disposeBag)
+    private func bindViewModel() {
+        viewModel.list
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] movieSections in
+                guard let strongSelf = self else { return }
+                strongSelf.updateSnapshot(with: movieSections)
+            }
+            .store(in: &cancellables)
     }
     
     private func observeErrorMessages() {
         viewModel
-            .errorMessages
-            .compactMap { $0 }
-            .asDriver { _ in fatalError("Unexpected error from error messages observable.") }
-            .drive(onNext: { [weak self] errorMessage in
+            .errorMessagesPublisher
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] in
                 guard let strongSelf = self else { return }
-                strongSelf.present(errorMessage: errorMessage,
-                                   withPresentationState: strongSelf.viewModel.errorPresentation)
-            })
-            .disposed(by: disposeBag)
+                strongSelf.present(
+                    errorMessage: $0,
+                    withPresentationState: strongSelf.viewModel.errorPresentation
+                )
+            }
+            .store(in: &cancellables)
+            
+    }
+}
+
+extension PopularMoviesViewController {
+    // MARK: - Data Source
+    private func makeDataSource() -> DataSource {
+        return DataSource(tableView: customView.tableView) { tableView, indexPath, movie in
+            guard let cell = tableView.dequeueReusableCell(withIdentifier: "MovieCell", for: indexPath) as? MovieCell else { return UITableViewCell() }
+            cell.configure(with: movie)
+            return cell
+        }
+    }
+    
+    private func updateSnapshot(with sections: [Int: [MovieListPresentable]]) {
+        var snapshot = DataSourceSnapshot()
+        let sortedSections = sections.keys.sorted(by: >)
+        for section in sortedSections {
+            if let items = sections[section] {
+                snapshot.appendSections([section])
+                snapshot.appendItems(items, toSection: section)
+            }
+        }
+        datasource.apply(snapshot, animatingDifferences: true)
     }
 }

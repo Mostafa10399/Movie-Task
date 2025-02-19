@@ -1,25 +1,41 @@
+//
+//  PopularMoviesViewModel.swift
+//  Movies-Task
+//
+//  Created by Mostafa on 19/02/2025.
+//
+
+
 import Foundation
-import RxSwift
+import Combine
+import UIKit
 
 public final class PopularMoviesViewModel {
     
     // MARK: - Properties
     
-    private let repository: MovieRepository
+    internal let repository: MovieRepository
     private let navigator: MovieDetailsNavigator
+    private let popularMoviesSubject = CurrentValueSubject<[Int: [MovieListPresentable]], Never>([:])
+    private let errorMessagesSubject = PassthroughSubject<ErrorMessage, Never>()
+    private let isLoadingSubject = CurrentValueSubject<Bool, Never>(false)
+    public let errorPresentation = CurrentValueSubject<ErrorPresentation?, Never>(nil)
+    public let selectItemSubject = CurrentValueSubject<IndexPath, Never>([])
     
-    private let popularMoviesSubject = BehaviorSubject<[Int: [MovieListPresentable]]>(value: [:])
-    private let errorMessagesSubject = BehaviorSubject<ErrorMessage?>(value: nil)
-    private let isLoadingSubject = BehaviorSubject<Bool>(value: false)
-
-    public var list: Observable<[Int: [MovieListPresentable]]> { return self.popularMoviesSubject.asObserver() }
-    public var isLoading: Observable<Bool> { return self.isLoadingSubject.asObserver() }
-    public var errorMessages: Observable<ErrorMessage?> { return self.errorMessagesSubject.asObserver() }
-    public let errorPresentation = PublishSubject<ErrorPresentation?>()
-    public let selectItemSubject = PublishSubject<Int>()
-
-    // State
-    private let disposeBag = DisposeBag()
+    public var list: AnyPublisher<[Int: [MovieListPresentable]], Never> {
+        popularMoviesSubject.eraseToAnyPublisher()
+    }
+    public var isLoading: AnyPublisher<Bool, Never> {
+        isLoadingSubject.eraseToAnyPublisher()
+    }
+    public var errorMessagesPublisher: AnyPublisher<ErrorMessage, Never> {
+        errorMessagesSubject.eraseToAnyPublisher()
+    }
+    public var selectedItemSubscriber: AnySubscriber<IndexPath, Never> {
+        AnySubscriber(selectItemSubject)
+    }
+    
+    private var cancelables: Set<AnyCancellable> = []
     
     // MARK: - Methods
     
@@ -30,28 +46,35 @@ public final class PopularMoviesViewModel {
         self.subscribeToSelectItem()
     }
     
-    
     private func getData() {
-        isLoadingSubject.onNext(true)
-        repository.getPopularMovies(page: 1)
-            .compactMap { $0.compactMap(MovieListPresentable.init) }
-            .compactMap { Dictionary(grouping: $0, by: { $0.year })}
-            .asObservable()
-            .subscribe(onNext: { [weak self] in
-                guard let strongSelf = self else { return }
-                strongSelf.popularMoviesSubject.onNext($0)
-            }, onError: { [weak self] in
-                self?.errorMessagesSubject.onNext(ErrorMessage(error: $0))
-            }, onCompleted: { [weak self] in
-                self?.isLoadingSubject.onNext(false)
-            }).disposed(by: disposeBag)
+        Task { [weak self] in
+            guard let strongSelf = self else { return }
+            strongSelf.isLoadingSubject.send(true)
+            defer { strongSelf.isLoadingSubject.send(false) }
+            do {
+                let movies = try await strongSelf.repository.getPopularMovies(page: 1)
+                let presentables = movies.compactMap(MovieListPresentable.init)
+                let groupedMovies = Dictionary(grouping: presentables, by: { $0.year })
+                await MainActor.run {
+                    strongSelf.popularMoviesSubject.send(groupedMovies)
+                }
+            } catch {
+                await MainActor.run {
+                    strongSelf.errorMessagesSubject.send(ErrorMessage(error: error))
+                }
+            }
+        }
     }
     
     private func subscribeToSelectItem() {
         selectItemSubject
-            .subscribe(onNext: { [weak self] in
-                self?.navigator.navigateToMovieDetails(with: $0, responder: self)
-            }).disposed(by: disposeBag)
+            .sink { [weak self] indexPath in
+                print(indexPath)
+//                guard let strongSelf = self, let movies = strongSelf.popularMoviesSubject.value[indexPath.section] else { return }
+//                
+//                strongSelf.navigator.navigateToMovieDetails(with: movies[indexPath.row].id, responder: self)
+            }
+            .store(in: &cancelables)
     }
 
 }
@@ -59,5 +82,11 @@ public final class PopularMoviesViewModel {
 extension PopularMoviesViewModel: ToggledWatchlistResponder {
     public func didToggleWatchlist(for id: Int) {
         getData()
+    }
+}
+
+extension Array {
+    func safe(at index: Int) -> Element? {
+        return indices.contains(index) ? self[index] : nil
     }
 }

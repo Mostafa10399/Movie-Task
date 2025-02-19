@@ -1,31 +1,45 @@
+//
+//  HomeRootViewModel.swift
+//  Movies-Task
+//
+//  Created by Mostafa on 19/02/2025.
+//
+
+import Foundation
+import Combine
+
 public final class HomeRootViewModel {
     
     // MARK: - Properties
     
-    private let viewSubject = BehaviorSubject<OrderListSubview>(value: .popular)
-    private let errorMessagesSubject = PublishSubject<ErrorMessage>()
-
-    public var selectedView: Observable<OrderListSubview> { return viewSubject.asObserver() }
-    public var errorMessages: Observable<ErrorMessage> { return self.errorMessagesSubject.asObserver() }
-    public let errorPresentation = PublishSubject<ErrorPresentation?>()
-
-    // State
-    let disposeBag = DisposeBag()
+    public var errorPresentation = CurrentValueSubject<ErrorPresentation?, Never>(nil)
+    private let errorMessagesSubject = PassthroughSubject<ErrorMessage, Never>()
+    private let selectedViewSubject = CurrentValueSubject<OrderListSubview, Never>(.popular)
+    public var errorMessagesPublisher: AnyPublisher<ErrorMessage, Never> {
+        errorMessagesSubject.eraseToAnyPublisher()
+    }
+    var selectedViewPublisher: AnyPublisher<OrderListSubview, Never> {
+        selectedViewSubject.eraseToAnyPublisher()
+    }
+    
+    private var cancellables = Set<AnyCancellable>()
     
     // MARK: - Methods
     
-    public init() {
-        
-    }
+    public init() {}
     
     @objc
     public func startSearching() {
-        viewSubject.onNext(.search)
+        selectedViewSubject.send(.search)
     }
-
+    
     @objc
     public func endSearching() {
-        viewSubject.onNext(.popular)
+        selectedViewSubject.send(.popular)
     }
+}
 
+
+public enum OrderListSubview: Int, CaseIterable {
+    case popular, search
 }

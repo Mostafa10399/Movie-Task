@@ -2,11 +2,11 @@
 //  SearchResultsViewModel.swift
 //  CoreKit
 //
-//  Created by Amr Salman on 26/04/2022.
+//  Created by Mostafa on 19/02/2025.
 //
 
 import Foundation
-import RxSwift
+import Combine
 
 public final class SearchResultsViewModel {
     
@@ -16,21 +16,28 @@ public final class SearchResultsViewModel {
     private var nextPage = 1
     private var canLoadMore = true
     private let navigator: MovieDetailsNavigator
+    private let searchResultsSubject = CurrentValueSubject<[MovieListPresentable], Never>([])
+    private let errorMessagesSubject = CurrentValueSubject<ErrorMessage?, Never>(nil)
+    private let isLoadingSubject = CurrentValueSubject<Bool, Never>(false)
+    public let errorPresentationSubject = PassthroughSubject<ErrorPresentation?, Never>()
+    public let searchTextSubject = CurrentValueSubject<String?, Never>(nil)
+    public let currentDisplayedItemSubject = PassthroughSubject<Int, Never>()
+    public let selectItemSubject = PassthroughSubject<Int, Never>()
     
-    private let searchResultsSubject = BehaviorSubject<[MovieListPresentable]>(value: [])
-    private let errorMessagesSubject = BehaviorSubject<ErrorMessage?>(value: nil)
-    private let isLoadingSubject = BehaviorSubject<Bool>(value: false)
-
-    public var list: Observable<[MovieListPresentable]> { return self.searchResultsSubject.asObserver() }
-    public var isLoading: Observable<Bool> { return self.isLoadingSubject.asObserver() }
-    public var errorMessages: Observable<ErrorMessage?> { return self.errorMessagesSubject.asObserver() }
-    public let errorPresentation = PublishSubject<ErrorPresentation?>()
-    public let searchTextSubject = BehaviorSubject<String?>(value: nil)
-    public let currentDisplayedItemSubject = PublishSubject<Int>()
-    public let selectItemSubject = PublishSubject<Int>()
-
+    public var list: AnyPublisher<[MovieListPresentable], Never> {
+        searchResultsSubject.eraseToAnyPublisher()
+    }
+    public var isLoading: AnyPublisher<Bool, Never> {
+        isLoadingSubject.eraseToAnyPublisher()
+    }
+    public var errorMessages: AnyPublisher<ErrorMessage?, Never> {
+        errorMessagesSubject.eraseToAnyPublisher()
+    }
+    public var searchTextSubscriber: AnySubscriber<String?, Never> {
+        AnySubscriber(searchTextSubject)
+    }
     // State
-    private let disposeBag = DisposeBag()
+    private var cancellables: Set<AnyCancellable> = []
     
     // MARK: - Methods
     
@@ -43,73 +50,80 @@ public final class SearchResultsViewModel {
     }
     
     private func loadMovies(with keyword: String) {
-        self.repository.search(query: keyword, page: self.nextPage)
-            .map { $0.map(MovieListPresentable.init) }
-            .asObservable()
-            .catch { error in
-                guard let error = error as? RxSwift.RxError, case RxSwift.RxError.noElements = error else { return Observable.error(error) }
-                return Observable.empty()
-            }.subscribe(onNext: { [weak self] in
-                guard let strongSelf = self else { return }
-                let newValue = [try? strongSelf.searchResultsSubject.value(), $0].compactMap { $0 }.flatMap { $0 }
-                strongSelf.searchResultsSubject.onNext(newValue)
-                strongSelf.nextPage += 1
-                strongSelf.canLoadMore = !$0.isEmpty
-            }, onError: { [weak self] in
-                print($0)
-                self?.errorMessagesSubject.onNext(ErrorMessage(error: $0))
-            }, onCompleted: { [weak self] in
-                self?.isLoadingSubject.onNext(false)
-            }).disposed(by: disposeBag)
+        isLoadingSubject.send(true)
+        Task { [weak self] in
+            guard let strongSelf = self else { return }
+            defer { strongSelf.isLoadingSubject.send(false) }
+            do {
+                let newMovies = try await strongSelf.repository.search(query: keyword, page: strongSelf.nextPage).map(MovieListPresentable.init)
+                await MainActor.run {
+                    var currentMovies = strongSelf.searchResultsSubject.value
+                    currentMovies.append(contentsOf: newMovies)
+                    strongSelf.searchResultsSubject.send(currentMovies)
+                    strongSelf.nextPage += 1
+                    strongSelf.canLoadMore = !newMovies.isEmpty
+                    
+                }
+            } catch {
+                await MainActor.run {
+                    strongSelf.errorMessagesSubject.send(ErrorMessage(error: error))
+                }
+            }
+        }
     }
-    
     
     private func subscribeToSearch() {
         searchTextSubject
             .compactMap { $0 }
-            .debounce(RxTimeInterval.milliseconds(500), scheduler: SerialDispatchQueueScheduler.init(qos: .userInitiated))
-            .subscribe(onNext: { [weak self] in
+            .debounce(for: .milliseconds(500), scheduler: DispatchQueue.main)
+            .sink { [weak self] searchText in
                 guard let strongSelf = self else { return }
-                strongSelf.searchResultsSubject.onNext([])
+                strongSelf.searchResultsSubject.send([])
                 strongSelf.nextPage = 1
                 strongSelf.canLoadMore = true
-                if !$0.isEmpty {
-                    strongSelf.loadMovies(with: $0)
+                if !searchText.isEmpty {
+                    strongSelf.loadMovies(with: searchText)
                 }
-            }).disposed(by: disposeBag)
+            }
+            .store(in: &cancellables)
     }
     
     private func subscribeToLoadMore() {
         currentDisplayedItemSubject
             .filter { $0 > 0 }
-            .filter { ((try? self.searchResultsSubject.value())?.count ?? 0) - 2 == $0 }
-            .subscribe(onNext: { [weak self] _ in
+            .filter { [weak self] index in
+                guard let strongSelf = self else { return false }
+                return (strongSelf.searchResultsSubject.value.count - 2) == index
+            }
+            .sink { [weak self] _ in
                 guard let strongSelf = self else { return }
-                if let keyword = try? strongSelf.searchTextSubject.value() {
+                if let keyword = strongSelf.searchTextSubject.value {
                     strongSelf.loadMovies(with: keyword)
                 }
-            }).disposed(by: disposeBag)
+            }
+            .store(in: &cancellables)
     }
+    
     
     private func subscribeToSelectItem() {
         selectItemSubject
-            .compactMap { try? self.searchResultsSubject.value()[$0].id }
-            .subscribe(onNext: { [weak self] in
-                self?.navigator.navigateToMovieDetails(with: $0, responder: self)
-            }).disposed(by: disposeBag)
+            .compactMap { [weak self] index in
+                guard let strongSelf = self else { return nil }
+                return self?.searchResultsSubject.value[index].id
+            }
+            .sink { [weak self] movieId in
+                self?.navigator.navigateToMovieDetails(with: movieId, responder: self)
+            }
+            .store(in: &cancellables)
     }
 
 }
 
 extension SearchResultsViewModel: ToggledWatchlistResponder {
     public func didToggleWatchlist(for id: Int) {
-        guard var value = (try? self.searchResultsSubject.value()),
-              let index = value.firstIndex(where: { $0.id == id })
-        else { return }
-        
-        var movie = value.remove(at: index)
-        movie.isInWatchlist.toggle()
-        value.insert(movie, at: index)
-        self.searchResultsSubject.onNext(value)
+        var movies = searchResultsSubject.value
+        guard let index = movies.firstIndex(where: { $0.id == id }) else { return }
+        movies[index].isInWatchlist.toggle()
+        searchResultsSubject.send(movies)
     }
 }

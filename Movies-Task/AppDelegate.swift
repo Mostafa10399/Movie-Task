@@ -10,10 +10,14 @@ import UIKit
 @main
 class AppDelegate: UIResponder, UIApplicationDelegate {
 
-
+    let injectionContainer = HomeDependencyContainer()
+    var window: UIWindow?
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
-        // Override point for customization after application launch.
+        let mainVC = injectionContainer.makeHomeViewController()
+        window = UIWindow(frame: UIScreen.main.bounds)
+        window?.rootViewController = mainVC
+        window?.makeKeyAndVisible()
         return true
     }
 }

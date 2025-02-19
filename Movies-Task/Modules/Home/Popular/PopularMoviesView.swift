@@ -1,3 +1,11 @@
+//
+//  PopularMoviesView.swift
+//  Movies-Task
+//
+//  Created by Mostafa on 19/02/2025.
+//
+
+
 import UIKit
 import SnapKit
 import AppUIKit
@@ -7,7 +15,7 @@ class PopularMoviesView: NiblessView {
     // MARK: - Properties
 
     let tableView = UITableView().with {
-        $0.register(R.nib.movieCell)
+        $0.register(UINib(nibName: "MovieCell", bundle: Bundle(for: MovieCell.self)), forCellReuseIdentifier: "MovieCell")
         $0.backgroundColor = .clear
         $0.backgroundView = nil
         $0.showsVerticalScrollIndicator = false

@@ -1,7 +1,15 @@
+//
+//  HomeRootViewController.swift
+//  Movies-Task
+//
+//  Created by Mostafa on 19/02/2025.
+//
+
+
 import UIKit
 import AppUIKit
 import CoreKit
-import RxSwift
+import Combine
 
 public class HomeRootViewController: NiblessViewController {
 
@@ -14,7 +22,7 @@ public class HomeRootViewController: NiblessViewController {
     private let popularMoviesViewController: PopularMoviesViewController
     
     // State
-    private let disposeBag = DisposeBag()
+    private var cancellable: Set<AnyCancellable> = []
 
     // MARK: - Methods
     init(view: HomeRootView, viewModel: HomeRootViewModel, popularMoviesViewController: PopularMoviesViewController) {
@@ -31,9 +39,8 @@ public class HomeRootViewController: NiblessViewController {
     override public func viewDidLoad() {
         super.viewDidLoad()
         observeErrorMessages()
-        title = R.string.localizable.moviesApp()
+        title = "Movies App"
         navigationItem.searchController = customView.searchController
-        
         addChild(popularMoviesViewController)
         popularMoviesViewController.didMove(toParent: self)
         view.addSubview(popularMoviesViewController.view)
@@ -50,13 +57,16 @@ public class HomeRootViewController: NiblessViewController {
     
     private func observeErrorMessages() {
         viewModel
-            .errorMessages
-            .asDriver { _ in fatalError("Unexpected error from error messages observable.") }
-            .drive(onNext: { [weak self] errorMessage in
+            .errorMessagesPublisher
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] in
                 guard let strongSelf = self else { return }
-                strongSelf.present(errorMessage: errorMessage,
-                                   withPresentationState: strongSelf.viewModel.errorPresentation)
-            })
-            .disposed(by: disposeBag)
+                strongSelf.present(
+                    errorMessage: $0,
+                    withPresentationState: strongSelf.viewModel.errorPresentation
+                )
+            }
+            .store(in: &cancellable)
+            
     }
 }

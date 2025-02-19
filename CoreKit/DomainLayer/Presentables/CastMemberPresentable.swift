@@ -7,7 +7,7 @@
 
 import Foundation
 
-public struct CastMemberPresentable {
+public struct CastMemberPresentable: Hashable {
     public let profile: String
     public let name: String
     public let id: Int

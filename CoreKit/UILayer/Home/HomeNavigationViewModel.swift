@@ -1,30 +1,38 @@
-import Foundation
-import RxSwift
+//
+//  HomeNavigationViewModel.swift
+//  Movies-Task
+//
+//  Created by Mostafa on 19/02/2025.
+//
 
-public typealias HomeNavigationAction = NavigationAction<HomeView>
+
+import Foundation
+import Combine
 
 public class HomeNavigationViewModel: MovieDetailsNavigator {
 
     // MARK: - Properties
     
-    public var view: Observable<HomeNavigationAction> { return viewSubject.asObserver() }
-    private let viewSubject = BehaviorSubject<HomeNavigationAction>(value: .present(view: .root))
+    @Published public var view: HomeView
 
     // MARK: - Methods
     
     public init() {
-        
+        view = .root
     }
     
-    public func navigateToMovieDetails(with id: Int, responder: ToggledWatchlistResponder?) {
-        viewSubject.onNext(.present(view: .details(id: id, responder: responder)))
+    public func navigateToMovieDetails(
+        with id: Int,
+        responder: ToggledWatchlistResponder?
+    ) {
+        view = .details(id: id, responder: responder)
     }
-    
-    public func uiPresented(view: HomeView) {
-        viewSubject.onNext(.presented(view: view))
-    }
+
 }
 
 public protocol MovieDetailsNavigator {
-    func navigateToMovieDetails(with id: Int, responder: ToggledWatchlistResponder?)
+    func navigateToMovieDetails(
+        with id: Int,
+        responder: ToggledWatchlistResponder?
+    )
 }

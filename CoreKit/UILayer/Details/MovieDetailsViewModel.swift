@@ -1,6 +1,13 @@
+//
+//  MovieDetailsViewModel.swift
+//  Movies-Task
+//
+//  Created by Mostafa on 19/02/2025.
+//
+
+
 import Foundation
-import Algorithms
-import RxSwift
+import Combine
 
 public final class MovieDetailsViewModel {
     
@@ -9,99 +16,132 @@ public final class MovieDetailsViewModel {
     private let repository: MovieDetailsRepository
     private let id: Int
     private let responder: ToggledWatchlistResponder?
-    
-    private let movieDetailsSubject = BehaviorSubject<[MovieDetail]>(value: [])
-    private let errorMessagesSubject = BehaviorSubject<ErrorMessage?>(value: nil)
-    private let isLoadingSubject = BehaviorSubject<Bool>(value: false)
-
-    public var list: Observable<[MovieDetail]> { return self.movieDetailsSubject.asObserver() }
-    public var isLoading: Observable<Bool> { return self.isLoadingSubject.asObserver() }
-    public var errorMessages: Observable<ErrorMessage?> { return self.errorMessagesSubject.asObserver() }
-    public let errorPresentation = PublishSubject<ErrorPresentation?>()
+    private let movieDetailsSubject = CurrentValueSubject<[MovieDetail], Never>([])
+    private let errorMessagesSubject = PassthroughSubject<ErrorMessage, Never>()
+    private let isLoadingSubject = CurrentValueSubject<Bool, Never>(false)
+    public var list: AnyPublisher<[MovieDetail], Never> {
+        movieDetailsSubject.eraseToAnyPublisher()
+    }
+    public var isLoading: AnyPublisher<Bool, Never> {
+        isLoadingSubject.eraseToAnyPublisher()
+    }
+    public var errorMessagesPublisher: AnyPublisher<ErrorMessage, Never> {
+        errorMessagesSubject.eraseToAnyPublisher()
+    }
+    public let errorPresentation = CurrentValueSubject<ErrorPresentation?, Never>(nil)
 
     // State
-    private let disposeBag = DisposeBag()
+    private var cancellables: Set<AnyCancellable> = []
     
     // MARK: - Methods
     
-    public init(withId id: Int, repository: MovieDetailsRepository, responder: ToggledWatchlistResponder?) {
+    public init(
+        withId id: Int,
+        repository: MovieDetailsRepository,
+        responder: ToggledWatchlistResponder?
+    ) {
         self.repository = repository
         self.id = id
         self.responder = responder
-        self.getMovieDetails()
+        self.getData()
         self.getSimilarMovies()
     }
     
-    private func getMovieDetails() {
-        isLoadingSubject.onNext(true)
-        repository.getMovieDetails(withId: id)
-            .compactMap(MovieDetailsPresentable.init)
-            .asObservable()
-            .subscribe { [weak self] in
-                guard let strongSelf = self else { return }
-                var value = (try? strongSelf.movieDetailsSubject.value()) ?? []
-                value.append(MovieDetail.movie($0))
-                strongSelf.movieDetailsSubject.onNext(value)
-            } onError: { [weak self] in
-                self?.errorMessagesSubject.onNext(ErrorMessage(error: $0))
-            } onCompleted: { [weak self] in
-                self?.isLoadingSubject.onNext(false)
-            }.disposed(by: disposeBag)
+    private func getData() {
+        Task { [weak self] in
+            guard let strongSelf = self else { return }
+            strongSelf.isLoadingSubject.send(true)
+            defer { strongSelf.isLoadingSubject.send(false) }
+            do {
+                let movieDetails = try await strongSelf.repository.getMovieDetails(withId: strongSelf.id)
+                let presentableDetails = MovieDetailsPresentable(movieDetails)
+                await MainActor.run {
+                    var value = strongSelf.movieDetailsSubject.value
+                    value.append(MovieDetail.movie(presentableDetails))
+                    strongSelf.movieDetailsSubject.send(value)
+                }
+            } catch {
+                await MainActor.run {
+                    strongSelf.errorMessagesSubject.send(ErrorMessage(error: error))
+                }
+            }
+        }
     }
-    
+
     private func getSimilarMovies() {
-        repository.getSimilarMovies(to: id, page: nil)
-            .map { Array($0.prefix(5)) }
-            .map { $0.compactMap(MovieListPresentable.init) }
-            .asObservable()
-            .do(onNext: { [weak self] in
-                guard let strongSelf = self else { return }
-                var value = (try? strongSelf.movieDetailsSubject.value()) ?? []
-                value.append(MovieDetail.similar($0))
-                strongSelf.movieDetailsSubject.onNext(value)
-            }).flatMap {
-                Observable.zip($0.map { self.repository.getCast(for: $0.id).asObservable() })
-            }.map {
-                $0.flatMap { $0 }
-            }.map {
-                Dictionary(grouping: $0, by: { (castMember: CrewMember) in
-                    castMember.knownForDepartment ?? ""
-                })
-            }.subscribe(onNext: { [weak self] in
-                guard let strongSelf = self else { return }
-                var value = (try? strongSelf.movieDetailsSubject.value()) ?? []
-                if let actors = $0["Acting"]?.uniqued(on: { $0.name }).sorted(by: { $0.popularity ?? 0.0 > $1.popularity ?? 0.0 }).prefix(5) {
-                        
-                    value.append(MovieDetail.actors(actors.compactMap(CastMemberPresentable.init)))
+        Task { [weak self] in
+            guard let strongSelf = self else { return }
+            do {
+                let similarMovies = try await strongSelf.repository.getSimilarMovies(to: strongSelf.id, page: nil)
+                    .prefix(5)
+                    .compactMap(MovieListPresentable.init)
+                await MainActor.run {
+                    var value = strongSelf.movieDetailsSubject.value
+                    value.append(MovieDetail.similar(Array(similarMovies)))
+                    strongSelf.movieDetailsSubject.send(value)
                 }
-                if let directors = $0["Directing"]?.uniqued(on: { $0.name }).sorted(by: { $0.popularity ?? 0.0 > $1.popularity ?? 0.0 }).prefix(5) {
-                    value.append(MovieDetail.directors(directors.compactMap(CastMemberPresentable.init)))
+                let castResults = try await withThrowingTaskGroup(of: [CrewMember].self) { group in
+                    for movie in similarMovies {
+                        group.addTask {
+                            try await strongSelf.repository.getCast(for: movie.id)
+                        }
+                    }
+                    var allCasts: [[CrewMember]] = []
+                    for try await cast in group {
+                        allCasts.append(cast)
+                    }
+                    return allCasts.flatMap { $0 }
                 }
-                strongSelf.movieDetailsSubject.onNext(value)
-            }).disposed(by: disposeBag)
+                let groupedCast = Dictionary(grouping: castResults, by: { $0.knownForDepartment ?? "" })
+                let topActors = groupedCast["Acting"]?
+                    .sorted(by: { ($0.popularity ?? 0.0) > ($1.popularity ?? 0.0) })
+                    .prefix(5)
+                    .compactMap(CastMemberPresentable.init)
+
+                let topDirectors = groupedCast["Directing"]?
+                    .sorted(by: { ($0.popularity ?? 0.0) > ($1.popularity ?? 0.0) })
+                    .prefix(5)
+                    .compactMap(CastMemberPresentable.init)
+
+                // Update movie details with actors and directors
+                await MainActor.run {
+                    var value = strongSelf.movieDetailsSubject.value
+                    if let actors = topActors { value.append(MovieDetail.actors(actors)) }
+                    if let directors = topDirectors { value.append(MovieDetail.directors(directors)) }
+                    strongSelf.movieDetailsSubject.send(value)
+                }
+                
+            } catch {
+                await MainActor.run {
+                    strongSelf.errorMessagesSubject.send(ErrorMessage(error: error))
+                }
+            }
+        }
     }
+
 
     // MARK: - Actions
     
     @objc
-    public func toggleWatchlist() {
-        repository.toggleWatchlist(for: id)
-            .subscribe(onSuccess: { [weak self] watchlist in
-                guard let strongSelf = self else { return }
-                strongSelf.responder?.didToggleWatchlist(for: strongSelf.id)
-                var value = (try? strongSelf.movieDetailsSubject.value()) ?? []
-                guard let movieDetailsIndex = value.firstIndex(where: {
-                    if case .movie = $0 { return true }
-                    return false
-                    
-                }) else { return }
-                
-                if case .movie(var movie) = value.remove(at: movieDetailsIndex) {
-                    movie.isInWatchlist.toggle()
-                    value.append(.movie(movie))
-                    strongSelf.movieDetailsSubject.onNext(value)
-                }
-            }).disposed(by: disposeBag)
+    public func toggleWatchlist() async {
+        do {
+            let isInWatchlist = try await repository.toggleWatchlist(for: id)
+            responder?.didToggleWatchlist(for: id)
+
+            var value = movieDetailsSubject.value
+            guard let movieDetailsIndex = value.firstIndex(where: {
+                if case .movie = $0 { return true }
+                return false
+            }) else { return }
+
+            if case .movie(var movie) = value.remove(at: movieDetailsIndex) {
+                movie.isInWatchlist = isInWatchlist
+                value.append(.movie(movie))
+                movieDetailsSubject.send(value)
+            }
+        } catch {
+            print("Error toggling watchlist: \(error)")
+        }
     }
 
 }

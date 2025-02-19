@@ -1,3 +1,11 @@
+//
+//  MovieDetailsView.swift
+//  Movies-Task
+//
+//  Created by Mostafa on 19/02/2025.
+//
+
+
 import UIKit
 import SnapKit
 import AppUIKit
@@ -7,9 +15,9 @@ class MovieDetailsView: NiblessView {
     // MARK: - Properties
 
     let tableView = UITableView().with {
-        $0.register(R.nib.movieDetailsCell)
-        $0.register(R.nib.horizontalMoviesListCell)
-        $0.register(R.nib.horizontalCastMembersListCell)
+        $0.register(UINib(nibName: "MovieDetailsCell", bundle: nil), forCellReuseIdentifier: "MovieDetailsCell")
+        $0.register(UINib(nibName: "horizontalMoviesListCell", bundle: nil), forCellReuseIdentifier: "horizontalMoviesListCell")
+        $0.register(UINib(nibName: "HorizontalCastMembersListCell", bundle: nil), forCellReuseIdentifier: "HorizontalCastMembersListCell")
         $0.backgroundColor = .clear
         $0.backgroundView = nil
         $0.showsVerticalScrollIndicator = false

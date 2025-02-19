@@ -14,7 +14,7 @@ public protocol RemoteAPI {
 
 extension RemoteAPI {
     public func request<T: Codable>(_ service: RemoteService) async throws -> T {
-        try await AF
+        return try await AF
             .request(service)
             .validate(statusCode: 200..<400)
             .serializingDecodable(T.self)

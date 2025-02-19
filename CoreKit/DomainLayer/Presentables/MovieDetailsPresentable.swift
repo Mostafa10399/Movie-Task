@@ -12,10 +12,8 @@ public struct MovieDetailsPresentable {
     public let title: String
     public let overview: String
     public var isInWatchlist: Bool
-    public let tagline: String
-    public let revenue: String
+    public let rate: String
     public let releaseDate: String
-    public let status: String
     
     init(_ movieTuple: MovieWithWatchlist) {
         if let poster = movieTuple.movie.posterPath {
@@ -26,9 +24,7 @@ public struct MovieDetailsPresentable {
         self.title = movieTuple.movie.title ?? ""
         self.overview = movieTuple.movie.overview ?? ""
         self.isInWatchlist = movieTuple.isInWatchlist
-        self.tagline = movieTuple.movie.tagline ?? ""
-        self.revenue = movieTuple.movie.revenue == nil ? "" : ["$", "\(movieTuple.movie.revenue ?? 0)"].compactMap { $0 }.joined()
         self.releaseDate = movieTuple.movie.releaseDate ?? "Unkown"
-        self.status = movieTuple.movie.status ?? ""
+        self.rate = "\(movieTuple.movie.voteAverage ?? 0)"
     }
 }

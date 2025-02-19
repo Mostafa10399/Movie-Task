@@ -55,6 +55,7 @@ public final class PopularMoviesViewModel {
                 let movies = try await strongSelf.repository.getPopularMovies(page: 1)
                 let presentables = movies.compactMap(MovieListPresentable.init)
                 let groupedMovies = Dictionary(grouping: presentables, by: { $0.year })
+                print(groupedMovies)
                 await MainActor.run {
                     strongSelf.popularMoviesSubject.send(groupedMovies)
                 }
@@ -68,14 +69,38 @@ public final class PopularMoviesViewModel {
     
     private func subscribeToSelectItem() {
         selectItemSubject
+            .dropFirst()
             .sink { [weak self] indexPath in
-                print(indexPath)
-//                guard let strongSelf = self, let movies = strongSelf.popularMoviesSubject.value[indexPath.section] else { return }
-//                
-//                strongSelf.navigator.navigateToMovieDetails(with: movies[indexPath.row].id, responder: self)
+                guard let self = self else { return }
+                
+                // Get the sorted keys (years) from the dictionary
+                let sortedYears = self.popularMoviesSubject.value.keys.sorted()
+                
+                // Ensure the section index is within bounds
+                guard indexPath.row < sortedYears.count else {
+                    print("Error: Section \(indexPath.section) is out of bounds.")
+                    return
+                }
+                
+                let selectedYear = sortedYears[indexPath.row] // Get the correct key
+                guard let movies = self.popularMoviesSubject.value[selectedYear], !movies.isEmpty else {
+                    print("Error: No movies found for year \(selectedYear).")
+                    return
+                }
+                
+                // Ensure the row index is within bounds
+                guard indexPath.section < movies.count else {
+                    print("Error: Row \(indexPath.row) is out of bounds for section \(indexPath.section).")
+                    return
+                }
+                
+                let selectedMovie = movies[indexPath.section]
+                print("Navigating to movie details: \(selectedMovie.id)")
+                self.navigator.navigateToMovieDetails(with: selectedMovie.id, responder: self)
             }
             .store(in: &cancelables)
     }
+
 
 }
 

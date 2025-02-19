@@ -17,7 +17,6 @@ extension RemoteService {
     public func asURLRequest() throws -> URLRequest {
         let url = try baseURL.asURL()
             .appendingPathComponent(requestConfiguration.path)
-            .absoluteString.replacingOccurrences(of: "//", with: "/")
             .asURL()
         var request = URLRequest(url: url)
         request.httpMethod = requestConfiguration.method.rawValue

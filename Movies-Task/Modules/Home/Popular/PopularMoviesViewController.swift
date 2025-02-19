@@ -19,8 +19,8 @@ public class PopularMoviesViewController: NiblessViewController {
     private let viewModel: PopularMoviesViewModel
     private let customView: PopularMoviesView
     // DataSource & DataSourceSnapShot TypeAlies
-    typealias DataSource = UITableViewDiffableDataSource<Int, MovieListPresentable>
-    typealias DataSourceSnapshot = NSDiffableDataSourceSnapshot<Int, MovieListPresentable>
+    typealias DataSource = UITableViewDiffableDataSource<String, MovieListPresentable>
+    typealias DataSourceSnapshot = NSDiffableDataSourceSnapshot<String, MovieListPresentable>
         
     
     // DataSource & DataSourceSnapShot
@@ -94,11 +94,13 @@ extension PopularMoviesViewController {
         var snapshot = DataSourceSnapshot()
         let sortedSections = sections.keys.sorted(by: >)
         for section in sortedSections {
+            let sectionTitle = "Year \(section)"
             if let items = sections[section] {
-                snapshot.appendSections([section])
-                snapshot.appendItems(items, toSection: section)
+                snapshot.appendSections([sectionTitle])
+                snapshot.appendItems(items, toSection: sectionTitle)
             }
         }
         datasource.apply(snapshot, animatingDifferences: true)
     }
+
 }

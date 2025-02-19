@@ -63,10 +63,10 @@ final class HomeViewController: NiblessNavigationController {
     }
     
     private func presentHomeRootView() {
-        
+        popToRootViewController(animated: false)
     }
     
     private func presentMovieDetails(using id: Int, responder: ToggledWatchlistResponder?) {
-        
+        pushViewController(makeMovieDetailsViewController(id, responder), animated: true)
     }
 }

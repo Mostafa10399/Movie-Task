@@ -35,7 +35,7 @@ extension MovieService: MoviesDBService {
                 method: .get,
                 path: mainRoute.appending("popular"),
                 parameters: parameters,
-                encoding: URLEncoding.default,
+                encoding: URLEncoding.queryString,
                 language: language
             )
         case let .movie(auth, id, language):

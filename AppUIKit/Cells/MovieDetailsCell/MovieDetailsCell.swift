@@ -22,10 +22,8 @@ final public class MovieDetailsCell: UITableViewCell {
             overviewLabel.numberOfLines = 0
         }
     }
-    @IBOutlet private(set) public weak var taglineLabel: UILabel!
     @IBOutlet private(set) public weak var revenueLabel: UILabel!
     @IBOutlet private(set) public weak var releaseDateLabel: UILabel!
-    @IBOutlet private(set) public weak var statusLabel: UILabel!
     @IBOutlet private(set) public weak var watchlistButton: UIButton! {
         didSet {
             watchlistButton.setTitle("", for: .normal)
@@ -36,10 +34,8 @@ final public class MovieDetailsCell: UITableViewCell {
         thumbnailImage.kf.setImage(with: item.thumbnail.isEmpty ? nil : URL(string: item.thumbnail), placeholder: UIImage(resource: .moviePoster))
         titleLabel.text = item.title
         overviewLabel.text = item.overview
-        taglineLabel.text = item.tagline
-        revenueLabel.text = item.revenue
+        revenueLabel.text = item.rate
         releaseDateLabel.text = item.releaseDate
-        statusLabel.text = item.status
         watchlistButton.setImage(item.isInWatchlist ? UIImage(resource: .bookmarkActive) : UIImage(resource: .bookmark), for: .normal)
     }
 

@@ -15,9 +15,9 @@ class MovieDetailsView: NiblessView {
     // MARK: - Properties
 
     let tableView = UITableView().with {
-        $0.register(UINib(nibName: "MovieDetailsCell", bundle: nil), forCellReuseIdentifier: "MovieDetailsCell")
-        $0.register(UINib(nibName: "horizontalMoviesListCell", bundle: nil), forCellReuseIdentifier: "horizontalMoviesListCell")
-        $0.register(UINib(nibName: "HorizontalCastMembersListCell", bundle: nil), forCellReuseIdentifier: "HorizontalCastMembersListCell")
+        $0.register(UINib(nibName: "MovieDetailsCell", bundle: Bundle(for: MovieCell.self)), forCellReuseIdentifier: "MovieDetailsCell")
+        $0.register(UINib(nibName: "horizontalMoviesListCell", bundle: Bundle(for: MovieCell.self)), forCellReuseIdentifier: "horizontalMoviesListCell")
+        $0.register(UINib(nibName: "HorizontalCastMembersListCell", bundle: Bundle(for: MovieCell.self)), forCellReuseIdentifier: "HorizontalCastMembersListCell")
         $0.backgroundColor = .clear
         $0.backgroundView = nil
         $0.showsVerticalScrollIndicator = false

@@ -10,4 +10,6 @@ import Foundation
 import CombineCocoa
 import AppUIKit
 
-public class MovieDetailsViewController: NiblessViewController { }
+public class MovieDetailsViewController: NiblessViewController {
+    
+}

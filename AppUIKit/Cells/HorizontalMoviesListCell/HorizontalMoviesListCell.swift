@@ -43,6 +43,7 @@ final public class HorizontalMoviesListCell: UITableViewCell {
     
     public func configure(with items: [MovieListPresentable]) {
         self.items = items
+        self.makeDataSourceSnapShot(data: items)
         
     }
 }

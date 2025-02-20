@@ -104,3 +104,8 @@ extension Array {
         return indices.contains(index) ? self[index] : nil
     }
 }
+
+public enum PopularMoviesItem: Hashable {
+    case header(String)
+    case movie(MovieListPresentable)
+}

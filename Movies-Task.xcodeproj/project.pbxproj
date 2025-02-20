@@ -219,13 +219,13 @@
 		040EA54E2D63F438008E05BF = {
 			isa = PBXGroup;
 			children = (
-				040EA60B2D63FBC1008E05BF /* Envioments */,
-				040EA5592D63F438008E05BF /* Movies-Task */,
-				040EA8FE2D64117B008E05BF /* CoreKit */,
 				040EAAD02D6557C0008E05BF /* AppUIKit */,
-				040EA5702D63F43A008E05BF /* Movies-TaskTests */,
+				040EA8FE2D64117B008E05BF /* CoreKit */,
 				040EA90C2D64117B008E05BF /* CoreKitTests */,
+				040EA60B2D63FBC1008E05BF /* Envioments */,
 				040EA6022D63F4DB008E05BF /* Frameworks */,
+				040EA5592D63F438008E05BF /* Movies-Task */,
+				040EA5702D63F43A008E05BF /* Movies-TaskTests */,
 				040EA5582D63F438008E05BF /* Products */,
 			);
 			sourceTree = "<group>";

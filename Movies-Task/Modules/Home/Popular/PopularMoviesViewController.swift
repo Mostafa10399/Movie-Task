@@ -17,16 +17,15 @@ public class PopularMoviesViewController: NiblessViewController {
     
     private let viewModel: PopularMoviesViewModel
     private let customView: PopularMoviesView
-    // DataSource & DataSourceSnapShot TypeAlies
-    typealias DataSource = UITableViewDiffableDataSource<String, MovieListPresentable>
+    // DataSource & DataSourceSnapShot TypeAlias
+    var list: [Int: [MovieListPresentable]] = [:]
+    typealias DataSource = CustomDataSource
     typealias DataSourceSnapshot = NSDiffableDataSourceSnapshot<String, MovieListPresentable>
         
-    
     // DataSource & DataSourceSnapShot
     private lazy var datasource = makeDataSource()
     private var datasourceSnapShot = DataSourceSnapshot()
 
-    
     // State
     private var cancellables: Set<AnyCancellable> = []
 
@@ -57,33 +56,34 @@ public class PopularMoviesViewController: NiblessViewController {
         viewModel.list
             .receive(on: DispatchQueue.main)
             .sink { [weak self] movieSections in
-                guard let strongSelf = self else { return }
-                strongSelf.updateSnapshot(with: movieSections)
+                guard let self = self else { return }
+                self.list = movieSections
+                self.updateSnapshot(with: movieSections)
             }
             .store(in: &cancellables)
     }
     
     private func observeErrorMessages() {
-        viewModel
-            .errorMessagesPublisher
+        viewModel.errorMessagesPublisher
             .receive(on: DispatchQueue.main)
             .sink { [weak self] in
-                guard let strongSelf = self else { return }
-                strongSelf.present(
+                guard let self = self else { return }
+                self.present(
                     errorMessage: $0,
-                    withPresentationState: strongSelf.viewModel.errorPresentation
+                    withPresentationState: self.viewModel.errorPresentation
                 )
             }
             .store(in: &cancellables)
-            
     }
 }
 
+// MARK: - Data Source Management
 extension PopularMoviesViewController {
-    // MARK: - Data Source
-    private func makeDataSource() -> DataSource {
-        return DataSource(tableView: customView.tableView) { tableView, indexPath, movie in
-            guard let cell = tableView.dequeueReusableCell(withIdentifier: "MovieCell", for: indexPath) as? MovieCell else { return UITableViewCell() }
+    private func makeDataSource() -> CustomDataSource {
+        return CustomDataSource(tableView: customView.tableView) { tableView, indexPath, movie in
+            guard let cell = tableView.dequeueReusableCell(withIdentifier: "MovieCell", for: indexPath) as? MovieCell else {
+                return UITableViewCell()
+            }
             cell.configure(with: movie)
             return cell
         }
@@ -94,14 +94,23 @@ extension PopularMoviesViewController {
         let sortedSections = sections.keys.sorted(by: >)
         for section in sortedSections {
             let sectionTitle = "Year \(section)"
-            if let items = sections[section] {
+            if let items = sections[section], !items.isEmpty {
                 snapshot.appendSections([sectionTitle])
                 snapshot.appendItems(items, toSection: sectionTitle)
             }
         }
+        
         print("Snapshot Sections: \(snapshot.sectionIdentifiers)")
         print("Snapshot Items: \(snapshot.itemIdentifiers)")
-        datasource.apply(snapshot, animatingDifferences: false)
+        
+        datasource.apply(snapshot, animatingDifferences: true)
     }
-
 }
+
+// MARK: - Custom Data Source
+class CustomDataSource: UITableViewDiffableDataSource<String, MovieListPresentable> {
+    override func tableView(_ tableView: UITableView, titleForHeaderInSection section: Int) -> String? {
+        return snapshot().sectionIdentifiers[safe: section]
+    }
+}
+

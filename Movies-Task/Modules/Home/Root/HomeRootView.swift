@@ -15,7 +15,7 @@ class HomeRootView: NiblessView {
     // MARK: - Properties
 
     lazy private(set) var searchController = UISearchController(searchResultsController: searchResultsController).with {
-        $0.searchBar.placeholder = "write the name of the movie you want to search on"
+        $0.searchBar.placeholder = "search by movie name"
         $0.searchResultsUpdater = searchResultsController as? UISearchResultsUpdating
     }
     

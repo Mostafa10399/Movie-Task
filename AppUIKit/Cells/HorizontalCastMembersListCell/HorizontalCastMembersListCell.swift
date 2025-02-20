@@ -31,7 +31,7 @@ final public class HorizontalCastMembersListCell: UITableViewCell {
             collectionView.setCollectionViewLayout(flowLayout, animated: false)
             collectionView.contentInset = UIEdgeInsets(top: 0, left: 20, bottom: 0, right: 20)
             collectionView.showsHorizontalScrollIndicator = false
-            collectionView.register(UINib(nibName: "MovieCollectionViewCell", bundle: nil), forCellWithReuseIdentifier: "MovieCollectionViewCell")
+            collectionView.register(UINib(nibName: "MovieCollectionViewCell", bundle: Bundle(for: MovieCollectionViewCell.self)), forCellWithReuseIdentifier: "MovieCollectionViewCell")
         }
     }
     

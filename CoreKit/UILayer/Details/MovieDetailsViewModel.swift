@@ -15,7 +15,7 @@ public final class MovieDetailsViewModel {
     
     private let repository: MovieDetailsRepository
     private let id: Int
-    private let responder: ToggledWatchlistResponder?
+    private let responder: ToggledWatchlistResponder
     private let movieDetailsSubject = CurrentValueSubject<[MovieDetail], Never>([])
     private let errorMessagesSubject = PassthroughSubject<ErrorMessage, Never>()
     private let isLoadingSubject = CurrentValueSubject<Bool, Never>(false)
@@ -38,7 +38,7 @@ public final class MovieDetailsViewModel {
     public init(
         withId id: Int,
         repository: MovieDetailsRepository,
-        responder: ToggledWatchlistResponder?
+        responder: ToggledWatchlistResponder
     ) {
         self.repository = repository
         self.id = id
@@ -123,25 +123,29 @@ public final class MovieDetailsViewModel {
     // MARK: - Actions
     
     @objc
-    public func toggleWatchlist() async {
-        do {
-            let isInWatchlist = try await repository.toggleWatchlist(for: id)
-            responder?.didToggleWatchlist(for: id)
+    public func toggleWatchlist() {
+        Task { [weak self] in
+            guard let strongSelf = self else { return }
+            do {
+                let isInWatchlist = try await strongSelf.repository.toggleWatchlist(for: strongSelf.id)
+                strongSelf.responder.didToggleWatchlist(for: strongSelf.id)
 
-            var value = movieDetailsSubject.value
-            guard let movieDetailsIndex = value.firstIndex(where: {
-                if case .movie = $0 { return true }
-                return false
-            }) else { return }
+                var value = strongSelf.movieDetailsSubject.value
+                guard let movieDetailsIndex = value.firstIndex(where: {
+                    if case .movie = $0 { return true }
+                    return false
+                }) else { return }
 
-            if case .movie(var movie) = value.remove(at: movieDetailsIndex) {
-                movie.isInWatchlist = isInWatchlist
-                value.append(.movie(movie))
-                movieDetailsSubject.send(value)
+                if case .movie(var movie) = value.remove(at: movieDetailsIndex) {
+                    movie.isInWatchlist = isInWatchlist
+                    value.append(.movie(movie))
+                    strongSelf.movieDetailsSubject.send(value)
+                }
+            } catch {
+                print("Error toggling watchlist: \(error)")
             }
-        } catch {
-            print("Error toggling watchlist: \(error)")
         }
     }
+
 
 }

@@ -23,7 +23,7 @@ public class HomeNavigationViewModel: MovieDetailsNavigator {
     
     public func navigateToMovieDetails(
         with id: Int,
-        responder: ToggledWatchlistResponder?
+        responder: ToggledWatchlistResponder
     ) {
         view = .details(id: id, responder: responder)
     }
@@ -33,6 +33,6 @@ public class HomeNavigationViewModel: MovieDetailsNavigator {
 public protocol MovieDetailsNavigator {
     func navigateToMovieDetails(
         with id: Int,
-        responder: ToggledWatchlistResponder?
+        responder: ToggledWatchlistResponder
     )
 }

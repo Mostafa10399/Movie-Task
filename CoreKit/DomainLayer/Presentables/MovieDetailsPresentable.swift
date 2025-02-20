@@ -7,7 +7,7 @@
 
 import Foundation
 
-public struct MovieDetailsPresentable {
+public struct MovieDetailsPresentable: Hashable {
     public let thumbnail: String
     public let title: String
     public let overview: String

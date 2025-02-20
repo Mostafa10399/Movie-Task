@@ -20,7 +20,7 @@ public final class PopularMoviesViewModel {
     private let errorMessagesSubject = PassthroughSubject<ErrorMessage, Never>()
     private let isLoadingSubject = CurrentValueSubject<Bool, Never>(false)
     public let errorPresentation = CurrentValueSubject<ErrorPresentation?, Never>(nil)
-    public let selectItemSubject = CurrentValueSubject<IndexPath, Never>([])
+    public let selectItemSubject = PassthroughSubject<IndexPath, Never>()
     
     public var list: AnyPublisher<[Int: [MovieListPresentable]], Never> {
         popularMoviesSubject.eraseToAnyPublisher()
@@ -55,7 +55,6 @@ public final class PopularMoviesViewModel {
                 let movies = try await strongSelf.repository.getPopularMovies(page: 1)
                 let presentables = movies.compactMap(MovieListPresentable.init)
                 let groupedMovies = Dictionary(grouping: presentables, by: { $0.year })
-                print(groupedMovies)
                 await MainActor.run {
                     strongSelf.popularMoviesSubject.send(groupedMovies)
                 }
@@ -69,33 +68,23 @@ public final class PopularMoviesViewModel {
     
     private func subscribeToSelectItem() {
         selectItemSubject
-            .dropFirst()
             .sink { [weak self] indexPath in
                 guard let self = self else { return }
-                
-                // Get the sorted keys (years) from the dictionary
-                let sortedYears = self.popularMoviesSubject.value.keys.sorted()
-                
-                // Ensure the section index is within bounds
-                guard indexPath.row < sortedYears.count else {
+                let sortedYears = self.popularMoviesSubject.value.keys.sorted(by: >)
+                guard indexPath.section < sortedYears.count else {
                     print("Error: Section \(indexPath.section) is out of bounds.")
                     return
                 }
-                
-                let selectedYear = sortedYears[indexPath.row] // Get the correct key
-                guard let movies = self.popularMoviesSubject.value[selectedYear], !movies.isEmpty else {
+                let selectedYear = sortedYears[indexPath.section]
+                guard let movies = self.popularMoviesSubject.value[selectedYear] else {
                     print("Error: No movies found for year \(selectedYear).")
                     return
                 }
-                
-                // Ensure the row index is within bounds
-                guard indexPath.section < movies.count else {
+                guard indexPath.row < movies.count else {
                     print("Error: Row \(indexPath.row) is out of bounds for section \(indexPath.section).")
                     return
                 }
-                
-                let selectedMovie = movies[indexPath.section]
-                print("Navigating to movie details: \(selectedMovie.id)")
+                let selectedMovie = movies[indexPath.row]
                 self.navigator.navigateToMovieDetails(with: selectedMovie.id, responder: self)
             }
             .store(in: &cancelables)

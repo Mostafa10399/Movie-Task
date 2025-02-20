@@ -7,7 +7,11 @@
 
 import Foundation
 
-public enum MovieDetail {
+public enum MovieDetail: Hashable {
+    public static func == (lhs: MovieDetail, rhs: MovieDetail) -> Bool {
+        return lhs.index == rhs.index
+    }
+    
     case movie(MovieDetailsPresentable)
     case similar([MovieListPresentable])
     case directors([CastMemberPresentable])

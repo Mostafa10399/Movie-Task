@@ -8,5 +8,5 @@
 
 public enum HomeView {
     case root
-    case details(id: Int, responder: ToggledWatchlistResponder?)
+    case details(id: Int, responder: ToggledWatchlistResponder)
 }

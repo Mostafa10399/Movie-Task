@@ -17,9 +17,9 @@ public final class SearchResultsViewModel {
     private var canLoadMore = true
     private let navigator: MovieDetailsNavigator
     private let searchResultsSubject = CurrentValueSubject<[MovieListPresentable], Never>([])
-    private let errorMessagesSubject = CurrentValueSubject<ErrorMessage?, Never>(nil)
+    private let errorMessagesSubject = PassthroughSubject<ErrorMessage, Never>()
     private let isLoadingSubject = CurrentValueSubject<Bool, Never>(false)
-    public let errorPresentationSubject = PassthroughSubject<ErrorPresentation?, Never>()
+    public let errorPresentation = CurrentValueSubject<ErrorPresentation?, Never>(nil)
     public let searchTextSubject = CurrentValueSubject<String?, Never>(nil)
     public let currentDisplayedItemSubject = PassthroughSubject<Int, Never>()
     public let selectItemSubject = PassthroughSubject<Int, Never>()
@@ -30,7 +30,7 @@ public final class SearchResultsViewModel {
     public var isLoading: AnyPublisher<Bool, Never> {
         isLoadingSubject.eraseToAnyPublisher()
     }
-    public var errorMessages: AnyPublisher<ErrorMessage?, Never> {
+    public var errorMessagesPublisher: AnyPublisher<ErrorMessage, Never> {
         errorMessagesSubject.eraseToAnyPublisher()
     }
     public var searchTextSubscriber: AnySubscriber<String?, Never> {
@@ -108,11 +108,13 @@ public final class SearchResultsViewModel {
     private func subscribeToSelectItem() {
         selectItemSubject
             .compactMap { [weak self] index in
-                guard let strongSelf = self else { return nil }
                 return self?.searchResultsSubject.value[index].id
             }
             .sink { [weak self] movieId in
-                self?.navigator.navigateToMovieDetails(with: movieId, responder: self)
+                if let strongSelf = self {
+                    strongSelf.navigator.navigateToMovieDetails(with: movieId, responder: strongSelf)
+
+                }
             }
             .store(in: &cancellables)
     }

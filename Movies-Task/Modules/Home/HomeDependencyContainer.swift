@@ -59,8 +59,7 @@ class HomeDependencyContainer {
     // Search
     
     private func makeSearchResultsViewController() -> SearchResultsViewController {
-        SearchResultsViewController()
-//        SearchResultsViewController(view: SearchResultsView(), viewModel: makeSearchResultsViewModel())
+        SearchResultsViewController(view: SearchResultsView(), viewModel: makeSearchResultsViewModel())
     }
     
     private func makeSearchResultsViewModel() -> SearchResultsViewModel {
@@ -70,8 +69,7 @@ class HomeDependencyContainer {
     // Details
     
     private func makeMovieDetailsViewController(viewModel: MovieDetailsViewModel) -> MovieDetailsViewController {
-        MovieDetailsViewController()
-//        MovieDetailsViewController(view: MovieDetailsView(), viewModel: viewModel)
+        MovieDetailsViewController(view: MovieDetailsView(), viewModel: viewModel)
     }
     
     private func makeMovieDetailsViewModel(

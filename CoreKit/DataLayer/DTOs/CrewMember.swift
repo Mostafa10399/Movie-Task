@@ -18,4 +18,15 @@ public struct CrewMember: Codable, Hashable, Equatable {
     public static func ==(lhs: CrewMember, rhs: CrewMember) -> Bool {
         lhs.id == rhs.id
     }
+    
+    enum CodingKeys: String, CodingKey {
+        case adult, gender, id
+        case knownForDepartment = "known_for_department"
+        case name
+        case originalName = "original_name"
+        case popularity
+        case profilePath = "profile_path"
+        case creditId = "credit_id"
+        case department, job
+    }
 }

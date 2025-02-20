@@ -16,7 +16,7 @@ class MovieDetailsView: NiblessView {
 
     let tableView = UITableView().with {
         $0.register(UINib(nibName: "MovieDetailsCell", bundle: Bundle(for: MovieCell.self)), forCellReuseIdentifier: "MovieDetailsCell")
-        $0.register(UINib(nibName: "HorizontalMoviesListCell", bundle: Bundle(for: MovieCell.self)), forCellReuseIdentifier: "HorizontalMoviesListCell")
+        $0.register(UINib(nibName: "HorizontalMoviesListCell", bundle: Bundle(for: HorizontalMoviesListCell.self)), forCellReuseIdentifier: "HorizontalMoviesListCell")
         $0.register(UINib(nibName: "HorizontalCastMembersListCell", bundle: Bundle(for: HorizontalCastMembersListCell.self)), forCellReuseIdentifier: "HorizontalCastMembersListCell")
         $0.backgroundColor = .clear
         $0.backgroundView = nil

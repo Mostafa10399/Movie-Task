@@ -51,7 +51,8 @@ public class MovieDetailsViewController: NiblessViewController {
         viewModel.list
             .receive(on: DispatchQueue.main)
             .sink { [weak self] movieDetails in
-                self?.updateSnapshot(with: movieDetails)
+                guard let strongSelf = self else { return }
+                strongSelf.updateSnapshot(with: movieDetails)
             }
             .store(in: &cancellables)
     }
@@ -100,7 +101,7 @@ extension MovieDetailsViewController {
                     for: .touchUpInside
                 )
                 return cell
-            case .similar(let movies):
+            case let .similar(movies):
                 guard let cell = tableView.dequeueReusableCell(withIdentifier: "HorizontalMoviesListCell", for: indexPath) as? HorizontalMoviesListCell else {
                     return UITableViewCell()
                 }

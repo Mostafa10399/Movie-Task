@@ -92,7 +92,7 @@ public final class MovieDetailsViewModel {
                     }
                     return allCasts.flatMap { $0 }
                 }
-                let groupedCast = Dictionary(grouping: castResults, by: { $0.knownForDepartment ?? "" })
+                let groupedCast = Dictionary(grouping: castResults, by: { $0.department ?? "" })
                 let topActors = groupedCast["Acting"]?
                     .sorted(by: { ($0.popularity ?? 0.0) > ($1.popularity ?? 0.0) })
                     .prefix(5)

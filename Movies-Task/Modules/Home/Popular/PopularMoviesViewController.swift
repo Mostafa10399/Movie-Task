@@ -5,7 +5,6 @@
 //  Created by Mostafa on 19/02/2025.
 //
 
-
 import UIKit
 import AppUIKit
 import CoreKit
@@ -100,7 +99,9 @@ extension PopularMoviesViewController {
                 snapshot.appendItems(items, toSection: sectionTitle)
             }
         }
-        datasource.apply(snapshot, animatingDifferences: true)
+        print("Snapshot Sections: \(snapshot.sectionIdentifiers)")
+        print("Snapshot Items: \(snapshot.itemIdentifiers)")
+        datasource.apply(snapshot, animatingDifferences: false)
     }
 
 }

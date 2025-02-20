@@ -26,7 +26,7 @@ class HomeDependencyContainer {
     
     public func makeHomeViewController() -> HomeViewController {
         
-        let movieDetailsViewControllerFactory = { (id: Int, responder: ToggledWatchlistResponder?) -> MovieDetailsViewController in
+        let movieDetailsViewControllerFactory = { (id: Int, responder: ToggledWatchlistResponder) -> MovieDetailsViewController in
             let viewModel = self.makeMovieDetailsViewModel(id: id, responder: responder)
             return self.makeMovieDetailsViewController(viewModel: viewModel)
         }
@@ -74,7 +74,7 @@ class HomeDependencyContainer {
     
     private func makeMovieDetailsViewModel(
         id: Int,
-        responder: ToggledWatchlistResponder?
+        responder: ToggledWatchlistResponder
     ) -> MovieDetailsViewModel {
         MovieDetailsViewModel(
             withId: id,

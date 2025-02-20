@@ -64,6 +64,7 @@ public class MovieDetailsViewController: NiblessViewController {
             snapshot.appendItems([detail], toSection: detail.title)
         }
         datasource.apply(snapshot, animatingDifferences: false)
+        customView.tableView.reloadData()
     }
     
     private func observeErrorMessages() {
@@ -83,14 +84,21 @@ public class MovieDetailsViewController: NiblessViewController {
 extension MovieDetailsViewController {
     // MARK: - Data Source
     private func makeDataSource() -> DataSource {
-        return DataSource(tableView: customView.tableView) { tableView, indexPath, element in
+        return DataSource(tableView: customView.tableView) {
+            tableView,
+            indexPath,
+            element in
             switch element {
             case .movie(let movie):
                 guard let cell = tableView.dequeueReusableCell(withIdentifier: "MovieDetailsCell", for: indexPath) as? MovieDetailsCell else {
                     return UITableViewCell()
                 }
                 cell.configure(with: movie)
-                cell.watchlistButton.addTarget(self.viewModel, action: #selector(MovieDetailsViewModel.toggleWatchlist), for: .touchUpInside)
+                cell.watchlistButton.addTarget(
+                    self.viewModel,
+                    action: #selector(MovieDetailsViewModel.toggleWatchlist),
+                    for: .touchUpInside
+                )
                 return cell
             case .similar(let movies):
                 guard let cell = tableView.dequeueReusableCell(withIdentifier: "HorizontalMoviesListCell", for: indexPath) as? HorizontalMoviesListCell else {
@@ -98,7 +106,8 @@ extension MovieDetailsViewController {
                 }
                 cell.configure(with: movies)
                 return cell
-            case .directors(let castMembers), .actors(let castMembers):
+            case .directors(let castMembers),
+                    .actors(let castMembers):
                 guard let cell = tableView.dequeueReusableCell(withIdentifier: "HorizontalCastMembersListCell", for: indexPath) as? HorizontalCastMembersListCell else {
                     return UITableViewCell()
                 }

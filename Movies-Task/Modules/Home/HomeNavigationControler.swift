@@ -16,7 +16,7 @@ final class HomeViewController: NiblessNavigationController {
     
     private let viewModel: HomeNavigationViewModel
     private let rootViewController: HomeRootViewController
-    private let makeMovieDetailsViewController: ((Int, ToggledWatchlistResponder?) -> MovieDetailsViewController)
+    private let makeMovieDetailsViewController: ((Int, ToggledWatchlistResponder) -> MovieDetailsViewController)
     private var cancelable: Set<AnyCancellable> = []
     
     // MARK: - Methods
@@ -24,7 +24,7 @@ final class HomeViewController: NiblessNavigationController {
     init(
         viewModel: HomeNavigationViewModel,
         rootViewController: HomeRootViewController,
-        movieDetailsViewControllerFactory: @escaping (Int, ToggledWatchlistResponder?) -> MovieDetailsViewController
+        movieDetailsViewControllerFactory: @escaping (Int, ToggledWatchlistResponder) -> MovieDetailsViewController
     ) {
         self.viewModel = viewModel
         self.rootViewController = rootViewController
@@ -66,7 +66,7 @@ final class HomeViewController: NiblessNavigationController {
         popToRootViewController(animated: false)
     }
     
-    private func presentMovieDetails(using id: Int, responder: ToggledWatchlistResponder?) {
+    private func presentMovieDetails(using id: Int, responder: ToggledWatchlistResponder) {
         pushViewController(makeMovieDetailsViewController(id, responder), animated: true)
     }
 }

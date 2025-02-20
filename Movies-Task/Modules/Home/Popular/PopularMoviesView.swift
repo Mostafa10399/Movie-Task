@@ -14,7 +14,7 @@ class PopularMoviesView: NiblessView {
 
     // MARK: - Properties
 
-    let tableView = UITableView().with {
+    let tableView = UITableView(frame: .zero, style: .plain).with {
         $0.register(UINib(nibName: "MovieCell", bundle: Bundle(for: MovieCell.self)), forCellReuseIdentifier: "MovieCell")
         $0.backgroundColor = .clear
         $0.backgroundView = nil
